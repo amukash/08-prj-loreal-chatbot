@@ -5,44 +5,70 @@
   padding: 0;
 }
 
+/* Brand colors */
+:root {
+  --loreal-black: #0b0b0b;
+  --loreal-gold: #c6a15a; /* soft gold */
+  --loreal-beige: #f6f1ec; /* soft warm background */
+  --muted: #6b6b6b;
+}
+
 /* —— body + fonts —— */
 body {
-  font-family: "Montserrat", Arial, Helvetica, sans-serif;
-  color: #333;
+  font-family: "Open Sans", Arial, Helvetica, sans-serif;
+  color: var(--loreal-black);
+  background: var(--loreal-beige);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   display: flex;
   justify-content: center;
+  padding: 36px 18px;
 }
 
 .page-wrapper {
-  width: 90%;
+  width: 100%;
   max-width: 900px;
 }
 
 /* header */
 .site-header {
   text-align: center;
-  padding-top: 50px;
+  padding-top: 18px;
+  padding-bottom: 8px;
+}
+
+#logo {
+  display: inline-block;
+  max-width: 200px;
+  width: 40%;
+  height: auto;
+  margin: 0 auto 10px;
 }
 
 .site-title {
+  font-family: "Playfair Display", serif;
   font-size: 22px;
-  font-weight: 500;
-  margin-bottom: 10px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--loreal-black);
+  margin-top: 6px;
 }
 
-/* chat window */
+/* chat area */
 .chatbox {
-  margin: 40px 0;
+  margin: 28px 0;
 }
 
 .chat-window {
-  height: 360px;
-  border: 1px solid #000;
-  padding: 20px;
-  font-size: 18px;
-  line-height: 1.5;
+  min-height: 360px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 11, 11, 0.06);
+  padding: 22px;
+  font-size: 17px;
+  line-height: 1.6;
   overflow-y: auto;
-  background: #fafafa;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(11, 11, 11, 0.06);
   white-space: pre-line;
 }
 
@@ -52,12 +78,51 @@ body {
   line-height: 1.5;
 }
 
+/* Chat bubble styles */
+.msg {
+  margin-bottom: 14px;
+  line-height: 1.5;
+  display: flex;
+}
+
 .msg.user {
-  color: #000;
+  justify-content: flex-end;
 }
 
 .msg.ai {
-  color: #666666;
+  justify-content: flex-start;
+}
+
+/* bubble container */
+.msg .bubble {
+  display: inline-block;
+  max-width: 78%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(11, 11, 11, 0.06);
+  word-break: break-word;
+}
+
+.msg.user .bubble {
+  background: var(--loreal-black);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+  text-align: left;
+}
+
+.msg.ai .bubble {
+  background: #fff;
+  color: var(--loreal-black);
+  border: 1px solid rgba(11, 11, 11, 0.06);
+  border-bottom-left-radius: 6px;
+}
+
+/* small muted text showing the user's question above the assistant reply */
+.msg .user-echo {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
 }
 
 /* input row */
@@ -65,45 +130,55 @@ body {
   display: flex;
   gap: 12px;
   margin-top: 16px;
+  align-items: center;
 }
 
 .chat-form input {
   flex: 1;
-  padding: 12px;
-  border: 1px solid #ccc;
-  font-size: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(11, 11, 11, 0.08);
+  font-size: 16px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.chat-form input::placeholder {
+  color: #9b9b9b;
 }
 
 .chat-form input:focus {
-  outline: 2px solid #000;
+  outline: 3px solid rgba(198, 161, 90, 0.12);
   outline-offset: 2px;
 }
 
 .chat-form button {
   font-size: 18px;
-  background: #000;
+  background: var(--loreal-black);
   color: #fff;
   border: none;
   padding: 12px;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.18s, transform 0.08s;
 }
 
 .chat-form button .material-icons {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .chat-form button:hover {
-  background: #666666;
+  background: var(--loreal-gold);
+  color: var(--loreal-black);
+  transform: translateY(-1px);
 }
 
 .chat-form button:focus {
-  outline: 2px solid #000;
+  outline: 3px solid rgba(198, 161, 90, 0.18);
   outline-offset: 2px;
 }
 
@@ -122,22 +197,37 @@ body {
 
 /* footer */
 .site-footer {
-  margin: 60px 0 40px;
+  margin: 36px 0 18px;
   text-align: center;
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .site-footer nav {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .site-footer a {
   margin: 0 8px;
-  color: #000;
+  color: var(--loreal-black);
   text-decoration: none;
 }
 
 .site-footer a:hover {
-  color: #666666;
+  color: var(--muted);
+}
+
+/* responsive tweaks */
+@media (max-width: 520px) {
+  #logo {
+    width: 60%;
+    max-width: 160px;
+  }
+  .chat-window {
+    min-height: 260px;
+    padding: 16px;
+  }
+  .site-title {
+    font-size: 18px;
+  }
 }

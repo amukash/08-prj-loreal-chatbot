@@ -8,8 +8,9 @@
       href="https://fonts.googleapis.com/icon?family=Material+Icons"
       rel="stylesheet"
     />
+    <!-- Brand-like fonts: Playfair Display for headings, Open Sans for body -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Open+Sans:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
@@ -19,6 +20,7 @@
     <div class="page-wrapper">
       <!------- Header / Branding ------->
       <header class="site-header">
+        <img id="logo" src="img/loreal-logo.png" alt="L'Oréal logo" />
         <h1 class="site-title">Smart Product Advisor</h1>
       </header>
 
@@ -59,8 +61,7 @@
       </footer>
     </div>
 
-    <!-- secrets.js can be removed when using Cloudflare Workers for API requests -->
-    <script src="secrets.js"></script>
+    <!-- secrets.js removed (do not keep API keys in client-side JS). Use a Cloudflare Worker or server and set API_ENDPOINT in script.js -->
     <script src="script.js"></script>
   </body>
 </html>
