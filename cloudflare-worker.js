@@ -1,10 +1,11 @@
-// Cloudflare Worker proxy for OpenAI Chat Completions
-// - Paste this into a new Worker (or deploy with Wrangler)
-// - Set a secret named OPENAI_API_KEY in your Worker environment
-// - This forwards the `messages` array to OpenAI and returns the response
+// Forwarding worker: send incoming requests to the demo proxy worker
+// This worker forwards the payload to the demo proxy so clients don't need
+// to talk directly to OpenAI or configure API keys here.
+
+const PROXY_WORKER = "https://loreal-chat-proxy.amukash.workers.dev";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request) {
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -13,7 +14,7 @@ export default {
     };
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     let payload;
@@ -26,44 +27,15 @@ export default {
       });
     }
 
-    const messages = payload.messages || payload;
-    if (!messages) {
-      return new Response(JSON.stringify({ error: "No messages provided" }), {
-        status: 400,
-        headers: corsHeaders,
-      });
-    }
-
-    const apiKey = env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    const apiUrl = "https://api.openai.com/v1/chat/completions";
-    const body = {
-      model: "gpt-4o",
-      messages: messages,
-      max_tokens: 800,
-    };
-
     try {
-      const resp = await fetch(apiUrl, {
+      const resp = await fetch(PROXY_WORKER, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      const data = await resp.json();
-      return new Response(JSON.stringify(data), {
-        status: resp.status,
-        headers: corsHeaders,
-      });
+      const text = await resp.text();
+      return new Response(text, { status: resp.status, headers: corsHeaders });
     } catch (err) {
       return new Response(JSON.stringify({ error: String(err) }), {
         status: 502,

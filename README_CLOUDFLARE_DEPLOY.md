@@ -26,8 +26,8 @@ This short guide helps you deploy the included `cloudflare-worker.js` and wire y
 
 5. Update the frontend `script.js`
 
-- Open `script.js` and set the full worker URL (include https://) as `API_ENDPOINT`, for example:
-  let API_ENDPOINT = 'https://loreal-chat-worker.example.workers.dev';
+- Open `script.js` and set the full worker URL (include https://) as `API_ENDPOINT`. For this project you can use the included demo worker:
+- Example: `https://loreal-chat-proxy.amukash.workers.dev`
 
 6. Test the worker from the Codespace (curl)
 

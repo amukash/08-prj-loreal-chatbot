@@ -82,8 +82,16 @@ async function fetchAssistantReply(messages) {
   }
 
   const data = await res.json();
+  // Accept multiple response shapes:
+  // - OpenAI raw response: { choices: [ { message: { content } } ] }
+  // - Some workers / proxies may return { reply } or { content } or { assistant }
   const reply =
-    data?.choices?.[0]?.message?.content || data?.reply || data?.content;
+    data?.choices?.[0]?.message?.content ||
+    data?.reply ||
+    data?.content ||
+    data?.assistant ||
+    (typeof data === "string" ? data : undefined);
+
   return reply;
 }
 

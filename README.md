@@ -11,4 +11,6 @@ L’Oréal is exploring the power of AI, and your job is to showcase what's poss
 
 When deploying through Cloudflare, make sure your API request body (in `script.js`) includes a `messages` array and handle the response by extracting `data.choices[0].message.content`.
 
+Tip: this project is set up to call a demo Cloudflare Worker proxy. The frontend `script.js` uses the worker URL `https://loreal-chat-proxy.amukash.workers.dev` to avoid exposing your OpenAI key in client-side code.
+
 Enjoy building your L’Oréal beauty assistant! 💄
