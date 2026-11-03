@@ -1,4 +1,3 @@
-
 /* =========================================
    L'ORÉAL BEAUTY ASSISTANT
    COMPLETE STYLESHEET
@@ -260,11 +259,23 @@ main {
   color: var(--loreal-gold);
 }
 
-/* Disable numbered list styling */
+/* Ordered list fixes (Proper numbering and spacing) */
 
 .msg.ai .bubble ol {
-  list-style: none;
-  padding-left: 0;
+  list-style: decimal;
+  padding-left: 20px;
+  margin: 10px 0 16px;
+}
+
+.msg.ai .bubble ol li {
+  margin-bottom: 12px;
+  padding-left: 4px;
+  line-height: 1.8;
+}
+
+.msg.ai .bubble ol li::marker {
+  color: var(--loreal-gold);
+  font-weight: 600;
 }
 
 
