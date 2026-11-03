@@ -1,4 +1,3 @@
-
 /* =========================================
    L'ORÉAL BEAUTY ASSISTANT
 ========================================= */
@@ -25,7 +24,7 @@ You can assist with:
 
 GUIDELINES:
 1. Be friendly, welcoming, and conversational.
-2. Give clear and practical recommendations.
+​2. Give clear and practical recommendations.
 3. Ask follow-up questions when needed.
 4. Explain how and when to use products.
 5. Never diagnose medical conditions.
@@ -37,7 +36,7 @@ GUIDELINES:
 
 FORMATTING RULES:
 1. Use clear, bold section headings.
-2. Organize skincare routines into Morning Routine and Evening Routine when appropriate.
+​2. Organize skincare routines into Morning Routine and Evening Routine when appropriate.
 3. NEVER number skincare steps.
 4. Use bold labels for steps, such as **Cleanser**, **Toner**, **Serum**, and **Moisturizer**.
 5. Put each skincare step in its own paragraph.
@@ -140,15 +139,16 @@ function renderAssistantMessage(bubble, message) {
     .replace(/\r\n/g, "\n")
     .replace(/\\([*#])/g, "$1");
 
-  // Separate headings and bullet points
+  // Separate headings, lists, and bullet points
   // if they are returned on the same line.
   text = text
     .replace(/[ \t]+(?=#{1,3}\s)/g, "\n")
-    .replace(/[ \t]+(?=-\s)/g, "\n");
+    .replace(/[ \t]+(?=-|\*|\d+\.\s)/g, "\n");
 
   const lines = text.split("\n");
 
   let currentList = null;
+  let currentOrderedList = null;
 
   lines.forEach((line) => {
 
@@ -156,57 +156,64 @@ function renderAssistantMessage(bubble, message) {
 
     // Ignore empty lines.
     if (!trimmed) {
-
       currentList = null;
+      currentOrderedList = null;
       return;
-
     }
 
     // SECTION HEADINGS
     const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
 
     if (headingMatch) {
-
       currentList = null;
+      currentOrderedList = null;
 
       const heading = document.createElement("h3");
-
       addFormattedText(heading, headingMatch[1]);
-
       bubble.appendChild(heading);
-
       return;
     }
 
-    // BULLET POINTS
-    const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    // ORDERED LISTS (1., 2., 3., etc.)
+    const orderedMatch = trimmed.match(/^\d+\.\s+(.+)$/);
 
-    if (bulletMatch) {
+    if (orderedMatch) {
+      currentList = null;
 
-      if (!currentList) {
-
-        currentList = document.createElement("ul");
-
-        bubble.appendChild(currentList);
-
+      if (!currentOrderedList) {
+        currentOrderedList = document.createElement("ol");
+        bubble.appendChild(currentOrderedList);
       }
 
       const item = document.createElement("li");
+      addFormattedText(item, orderedMatch[1]);
+      currentOrderedList.appendChild(item);
+      return;
+    }
 
+    // BULLET POINTS (- or *)
+    const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/);
+
+    if (bulletMatch) {
+      currentOrderedList = null;
+
+      if (!currentList) {
+        currentList = document.createElement("ul");
+        bubble.appendChild(currentList);
+      }
+
+      const item = document.createElement("li");
       addFormattedText(item, bulletMatch[1]);
-
       currentList.appendChild(item);
-
       return;
     }
 
     // REGULAR PARAGRAPHS
     currentList = null;
+    currentOrderedList = null;
 
     const paragraph = document.createElement("p");
-
     addFormattedText(paragraph, trimmed);
-
     bubble.appendChild(paragraph);
 
   });
