@@ -1,9 +1,16 @@
-// L'Oréal Beauty Assistant
 
+// ==========================================
+// L'ORÉAL BEAUTY ASSISTANT
+// ==========================================
+
+// Cloudflare Worker API endpoint
 const API_ENDPOINT =
   "https://loreal-chat-proxy.amukash.workers.dev";
 
-// Instructions for the AI assistant.
+// ==========================================
+// AI SYSTEM PROMPT
+// ==========================================
+
 const SYSTEM_PROMPT = `
 You are the L'Oréal Beauty Assistant, a friendly and knowledgeable beauty advisor.
 
@@ -28,7 +35,10 @@ Guidelines:
 10. Keep responses organized and easy to understand.
 `;
 
-// Conversation history.
+// ==========================================
+// CONVERSATION HISTORY
+// ==========================================
+
 let conversation = [
   {
     role: "system",
@@ -36,12 +46,26 @@ let conversation = [
   }
 ];
 
-// Find the website elements.
+// ==========================================
+// HTML ELEMENTS
+// ==========================================
+
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
+const sendBtn = document.getElementById("sendBtn");
 
-// Display a message in the chat window.
+// Check that all required HTML elements exist.
+if (!chatForm || !userInput || !chatWindow || !sendBtn) {
+  console.error(
+    "L'Oréal Assistant: One or more required HTML elements are missing."
+  );
+}
+
+// ==========================================
+// DISPLAY CHAT MESSAGES
+// ==========================================
+
 function appendMessage(role, message) {
   const messageElement = document.createElement("div");
 
@@ -57,7 +81,10 @@ function appendMessage(role, message) {
   return messageElement;
 }
 
-// Keep the conversation from becoming too long.
+// ==========================================
+// LIMIT CONVERSATION HISTORY
+// ==========================================
+
 function trimConversation() {
   const maximumMessages = 21;
 
@@ -69,22 +96,35 @@ function trimConversation() {
   }
 }
 
-// Send the conversation to the Cloudflare Worker.
+// ==========================================
+// CONNECT TO OPENAI THROUGH CLOUDFLARE
+// ==========================================
+
 async function fetchAssistantReply() {
   const response = await fetch(API_ENDPOINT, {
     method: "POST",
+
     headers: {
       "Content-Type": "application/json"
     },
+
     body: JSON.stringify({
       messages: conversation
     })
   });
 
-  const data = await response.json();
+  let data;
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error("The server returned an invalid response.");
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || `Server error: ${response.status}`);
+    throw new Error(
+      data.error || `Server error: ${response.status}`
+    );
   }
 
   if (!data.reply) {
@@ -94,13 +134,17 @@ async function fetchAssistantReply() {
   return data.reply;
 }
 
-// Handle the user's message.
+// ==========================================
+// HANDLE USER MESSAGES
+// ==========================================
+
 chatForm.addEventListener("submit", async function (event) {
   event.preventDefault();
 
   const message = userInput.value.trim();
 
-  if (!message) {
+  // Do not submit empty messages or duplicate submissions.
+  if (!message || sendBtn.disabled) {
     return;
   }
 
@@ -118,19 +162,23 @@ chatForm.addEventListener("submit", async function (event) {
   // Clear the input field.
   userInput.value = "";
 
-  // Temporarily display a loading message.
+  // Disable the Send button while waiting for a response.
+  sendBtn.disabled = true;
+
+  // Show a loading message.
   const loadingMessage = appendMessage(
     "assistant",
     "Thinking..."
   );
 
   try {
+    // Request a response from the AI.
     const reply = await fetchAssistantReply();
 
-    // Replace the loading message with the actual response.
+    // Display the assistant's response.
     loadingMessage.textContent = reply;
 
-    // Save the assistant's response.
+    // Save the response in conversation history.
     conversation.push({
       role: "assistant",
       content: reply
@@ -144,15 +192,25 @@ chatForm.addEventListener("submit", async function (event) {
     loadingMessage.textContent =
       "I'm sorry! I'm having trouble connecting right now. Please try again shortly.";
 
-    // Remove the failed user message from the conversation
-    // so it is not repeatedly sent to OpenAI.
+    // Remove the failed user message from history.
     conversation.pop();
-  }
 
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  } finally {
+    // Re-enable the Send button.
+    sendBtn.disabled = false;
+
+    // Return focus to the message input.
+    userInput.focus();
+
+    // Keep the latest message visible.
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
 });
 
-// Initial welcome message.
+// ==========================================
+// INITIAL WELCOME MESSAGE
+// ==========================================
+
 appendMessage(
   "assistant",
   "👋 Hello! Welcome to L'Oréal Beauty Assistant! I'm here to help you discover products, build skincare routines, explore ingredients, and find beauty solutions. What can I help you with today?"
