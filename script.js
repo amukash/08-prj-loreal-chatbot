@@ -1,44 +1,40 @@
 
-// ==========================================
-// L'ORÉAL BEAUTY ASSISTANT
-// ==========================================
+/* ==========================================
+   L'ORÉAL BEAUTY ASSISTANT
+========================================== */
 
-// Cloudflare Worker API endpoint
+// Cloudflare Worker endpoint
 const API_ENDPOINT =
   "https://loreal-chat-proxy.amukash.workers.dev";
 
-// ==========================================
-// AI SYSTEM PROMPT
-// ==========================================
-
+// AI instructions
 const SYSTEM_PROMPT = `
 You are the L'Oréal Beauty Assistant, a friendly and knowledgeable beauty advisor.
 
-Your job is to help users with:
+Your purpose is to help users discover beauty products and solutions.
+
+You can assist with:
 - Skincare routines and product recommendations.
 - Oily, dry, combination, sensitive, and acne-prone skin.
 - Haircare routines and hair products.
 - Makeup recommendations and application tips.
 - Fragrances and beauty products.
-- Explaining skincare and beauty ingredients.
+- Skincare and beauty ingredients.
 
 Guidelines:
 1. Be friendly, welcoming, and conversational.
-2. Give clear, practical recommendations.
-3. Ask follow-up questions when needed to personalize recommendations.
+2. Give clear and practical recommendations.
+3. Ask follow-up questions when needed.
 4. Explain how and when to use products.
-5. Do not diagnose medical conditions.
+5. Never diagnose medical conditions.
 6. Recommend patch testing when appropriate.
 7. Encourage users with persistent or severe skin concerns to consult a dermatologist.
-8. Do not invent L'Oréal product names or claim a product has ingredients unless you are confident.
-9. If a question is unrelated to beauty, politely guide the conversation back to beauty.
+8. Do not invent L'Oréal product names or ingredients.
+9. Politely redirect unrelated questions toward beauty topics.
 10. Keep responses organized and easy to understand.
 `;
 
-// ==========================================
-// CONVERSATION HISTORY
-// ==========================================
-
+// Conversation history
 let conversation = [
   {
     role: "system",
@@ -46,20 +42,15 @@ let conversation = [
   }
 ];
 
-// ==========================================
-// HTML ELEMENTS
-// ==========================================
-
+// HTML elements
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
 const sendBtn = document.getElementById("sendBtn");
 
-// Check that all required HTML elements exist.
+// Check HTML elements
 if (!chatForm || !userInput || !chatWindow || !sendBtn) {
-  console.error(
-    "L'Oréal Assistant: One or more required HTML elements are missing."
-  );
+  console.error("L'Oréal Assistant: Required HTML elements are missing.");
 }
 
 // ==========================================
@@ -67,18 +58,23 @@ if (!chatForm || !userInput || !chatWindow || !sendBtn) {
 // ==========================================
 
 function appendMessage(role, message) {
-  const messageElement = document.createElement("div");
+  const messageRow = document.createElement("div");
 
-  messageElement.className =
-    role === "user" ? "user-message" : "assistant-message";
+  // Match the existing CSS classes
+  messageRow.className =
+    role === "user" ? "msg user" : "msg ai";
 
-  messageElement.textContent = message;
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
 
-  chatWindow.appendChild(messageElement);
+  bubble.textContent = message;
+
+  messageRow.appendChild(bubble);
+  chatWindow.appendChild(messageRow);
 
   chatWindow.scrollTop = chatWindow.scrollHeight;
 
-  return messageElement;
+  return bubble;
 }
 
 // ==========================================
@@ -97,7 +93,7 @@ function trimConversation() {
 }
 
 // ==========================================
-// CONNECT TO OPENAI THROUGH CLOUDFLARE
+// CONNECT TO OPENAI
 // ==========================================
 
 async function fetchAssistantReply() {
@@ -128,30 +124,29 @@ async function fetchAssistantReply() {
   }
 
   if (!data.reply) {
-    throw new Error("The assistant did not return a response.");
+    throw new Error("The assistant returned an empty response.");
   }
 
   return data.reply;
 }
 
 // ==========================================
-// HANDLE USER MESSAGES
+// HANDLE USER SUBMISSIONS
 // ==========================================
 
-chatForm.addEventListener("submit", async function (event) {
+chatForm.addEventListener("submit", async function(event) {
   event.preventDefault();
 
   const message = userInput.value.trim();
 
-  // Do not submit empty messages or duplicate submissions.
   if (!message || sendBtn.disabled) {
     return;
   }
 
-  // Display the user's message.
+  // Display user message
   appendMessage("user", message);
 
-  // Add the message to conversation history.
+  // Save user message
   conversation.push({
     role: "user",
     content: message
@@ -159,26 +154,26 @@ chatForm.addEventListener("submit", async function (event) {
 
   trimConversation();
 
-  // Clear the input field.
+  // Clear input
   userInput.value = "";
 
-  // Disable the Send button while waiting for a response.
+  // Disable button while waiting
   sendBtn.disabled = true;
 
-  // Show a loading message.
-  const loadingMessage = appendMessage(
+  // Show loading message
+  const loadingBubble = appendMessage(
     "assistant",
     "Thinking..."
   );
 
   try {
-    // Request a response from the AI.
+    // Get AI response
     const reply = await fetchAssistantReply();
 
-    // Display the assistant's response.
-    loadingMessage.textContent = reply;
+    // Display AI response
+    loadingBubble.textContent = reply;
 
-    // Save the response in conversation history.
+    // Save AI response
     conversation.push({
       role: "assistant",
       content: reply
@@ -189,20 +184,20 @@ chatForm.addEventListener("submit", async function (event) {
   } catch (error) {
     console.error("L'Oréal Assistant Error:", error);
 
-    loadingMessage.textContent =
+    loadingBubble.textContent =
       "I'm sorry! I'm having trouble connecting right now. Please try again shortly.";
 
-    // Remove the failed user message from history.
+    // Remove unsuccessful user message
     conversation.pop();
 
   } finally {
-    // Re-enable the Send button.
+    // Re-enable button
     sendBtn.disabled = false;
 
-    // Return focus to the message input.
+    // Return focus to input
     userInput.focus();
 
-    // Keep the latest message visible.
+    // Scroll to latest message
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
 });
