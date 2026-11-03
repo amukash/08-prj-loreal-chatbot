@@ -7,7 +7,7 @@ const API_ENDPOINT = "https://loreal-chat-proxy.amukash.workers.dev";
 
 
 /* =========================================
-   AI INSTRUCTIONS
+   AI SYSTEM INSTRUCTIONS
 ========================================= */
 
 const SYSTEM_PROMPT = `
@@ -36,19 +36,32 @@ GUIDELINES:
 10. Keep responses organized and easy to read.
 
 FORMATTING RULES:
-1. Use **bold** for product names and important labels.
-2. Use clear section headings.
-3. Put each heading on its own line.
-4. Use numbered lists for skincare routines and steps.
-5. Use bullet points for additional tips.
-6. Leave blank lines between sections.
-7. Keep paragraphs short.
-8. Never put the entire response in one paragraph.
-9. Use normal Markdown formatting without escaping asterisks with backslashes.
+1. Use clear, bold section headings.
+2. Organize skincare routines into Morning Routine and Evening Routine when appropriate.
+3. NEVER number skincare steps.
+4. Use bold labels for steps, such as **Cleanser**, **Toner**, **Serum**, and **Moisturizer**.
+5. Put each skincare step in its own paragraph.
+6. Use bullet points only for short explanations, product examples, or additional tips.
+7. Do not use nested lists.
+8. Leave a blank line between each skincare step.
+9. Keep responses clean, elegant, and easy to read.
+10. Avoid unnecessary formatting and long paragraphs.
+11. Use standard Markdown without escaping symbols with backslashes.
+12. Do not repeat list numbering or use numbered lists.
+
+PRODUCT RECOMMENDATIONS:
+- Recommend products only when you have reliable information about them.
+- Do not invent product names, ingredients, or claims.
+- Explain briefly why a product or ingredient may be suitable.
+- Remind users that products should be selected according to their skin type and sensitivities.
 `;
 
+
 let conversation = [
-  { role: "system", content: SYSTEM_PROMPT }
+  {
+    role: "system",
+    content: SYSTEM_PROMPT
+  }
 ];
 
 
@@ -63,7 +76,7 @@ const sendBtn = document.getElementById("sendBtn");
 
 
 /* =========================================
-   FORMAT TEXT
+   FORMAT BOLD AND ITALIC TEXT
 ========================================= */
 
 function addFormattedText(parent, text) {
@@ -79,7 +92,7 @@ function addFormattedText(parent, text) {
 
   while ((match = pattern.exec(text)) !== null) {
 
-    // Add normal text before formatting.
+    // Add regular text.
     parent.appendChild(
       document.createTextNode(
         text.slice(lastIndex, match.index)
@@ -91,11 +104,15 @@ function addFormattedText(parent, text) {
     let element;
 
     if (token.startsWith("**")) {
+
       element = document.createElement("strong");
       element.textContent = token.slice(2, -2);
+
     } else {
+
       element = document.createElement("em");
       element.textContent = token.slice(1, -1);
+
     }
 
     parent.appendChild(element);
@@ -118,33 +135,31 @@ function renderAssistantMessage(bubble, message) {
 
   bubble.replaceChildren();
 
-  // Normalize the response.
+  // Clean up the AI response.
   let text = message
     .replace(/\r\n/g, "\n")
     .replace(/\\([*#])/g, "$1");
 
-  // Separate headings, numbered lists, and bullet points
-  // when the AI returns them on the same line.
+  // Separate headings and bullet points
+  // if they are returned on the same line.
   text = text
     .replace(/[ \t]+(?=#{1,3}\s)/g, "\n")
-    .replace(/[ \t]+(?=\d+\.\s)/g, "\n")
     .replace(/[ \t]+(?=-\s)/g, "\n");
 
   const lines = text.split("\n");
 
   let currentList = null;
 
-  function closeList() {
-    currentList = null;
-  }
-
   lines.forEach((line) => {
 
     const trimmed = line.trim();
 
+    // Ignore empty lines.
     if (!trimmed) {
-      closeList();
+
+      currentList = null;
       return;
+
     }
 
     // SECTION HEADINGS
@@ -152,7 +167,7 @@ function renderAssistantMessage(bubble, message) {
 
     if (headingMatch) {
 
-      closeList();
+      currentList = null;
 
       const heading = document.createElement("h3");
 
@@ -163,41 +178,17 @@ function renderAssistantMessage(bubble, message) {
       return;
     }
 
-    // NUMBERED LISTS
-    const numberedMatch = trimmed.match(/^\d+\.\s+(.+)$/);
-
-    if (numberedMatch) {
-
-      if (!currentList || currentList.tagName !== "OL") {
-
-        closeList();
-
-        currentList = document.createElement("ol");
-
-        bubble.appendChild(currentList);
-      }
-
-      const item = document.createElement("li");
-
-      addFormattedText(item, numberedMatch[1]);
-
-      currentList.appendChild(item);
-
-      return;
-    }
-
-    // BULLET LISTS
+    // BULLET POINTS
     const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/);
 
     if (bulletMatch) {
 
-      if (!currentList || currentList.tagName !== "UL") {
-
-        closeList();
+      if (!currentList) {
 
         currentList = document.createElement("ul");
 
         bubble.appendChild(currentList);
+
       }
 
       const item = document.createElement("li");
@@ -210,7 +201,7 @@ function renderAssistantMessage(bubble, message) {
     }
 
     // REGULAR PARAGRAPHS
-    closeList();
+    currentList = null;
 
     const paragraph = document.createElement("p");
 
@@ -351,7 +342,7 @@ chatForm.addEventListener("submit", async function(event) {
   // Clear input.
   userInput.value = "";
 
-  // Disable send button while waiting.
+  // Disable button while waiting.
   sendBtn.disabled = true;
 
   // Display loading message.
@@ -365,10 +356,10 @@ chatForm.addEventListener("submit", async function(event) {
     // Get AI response.
     const reply = await fetchAssistantReply();
 
-    // Display formatted response.
+    // Display organized response.
     renderAssistantMessage(loadingBubble, reply);
 
-    // Save response to conversation history.
+    // Save response.
     conversation.push({
       role: "assistant",
       content: reply
@@ -383,19 +374,20 @@ chatForm.addEventListener("submit", async function(event) {
     loadingBubble.textContent =
       "I'm sorry! I'm having trouble connecting right now. Please try again shortly.";
 
-    // Remove the failed user message from history.
+    // Remove failed user message from conversation history.
     const lastMessage = conversation[conversation.length - 1];
 
     if (
       lastMessage?.role === "user" &&
       lastMessage.content === message
     ) {
+
       conversation.pop();
+
     }
 
   } finally {
 
-    // Re-enable the send button.
     sendBtn.disabled = false;
 
     userInput.focus();
