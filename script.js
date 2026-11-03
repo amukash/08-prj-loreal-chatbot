@@ -1,88 +1,116 @@
 
 "use strict";
 
-// ==========================================
+// ============================================
 // L'ORÉAL BEAUTY ASSISTANT
-// Frontend JavaScript
-// ==========================================
+// Complete Frontend JavaScript
+// ============================================
 
-// DOM Elements
+
+// 1. DOM ELEMENTS
+// ============================================
+
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
 
-// Cloudflare Worker API endpoint
+
+// 2. CLOUDFLARE WORKER API
+// ============================================
+
 const API_ENDPOINT =
   "https://loreal-chat-proxy.amukash.workers.dev";
 
-// ==========================================
-// AI SYSTEM PROMPT
-// ==========================================
+
+// 3. AI SYSTEM PROMPT
+// ============================================
 
 const systemPrompt = `
-You are the official L'Oréal Beauty Assistant.
+You are L'Oréal Beauty Assistant, a friendly and knowledgeable
+virtual beauty consultant.
 
-Your purpose is to help users discover beauty products
-and develop personalized beauty routines.
+Your goal is to help users discover beauty products, understand
+skincare ingredients, and create personalized beauty routines.
 
-YOUR AREAS OF EXPERTISE:
+AREAS OF EXPERTISE:
 
-1. Skincare
+SKINCARE:
 - Oily skin
 - Dry skin
 - Combination skin
 - Sensitive skin
 - Acne-prone skin
-- Uneven skin tone
 - Dark spots
-- Hydration
-- Anti-aging
+- Uneven skin tone
+- Skin hydration
+- Fine lines and wrinkles
+- Skincare routines
 
-2. Haircare
-- Hair types and textures
+HAIRCARE:
+- Curly, straight, wavy, and coily hair
 - Hair treatments
 - Shampoos and conditioners
-- Hair growth and scalp care
+- Hair hydration
+- Scalp care
 
-3. Makeup
-- Foundations
-- Concealers
-- Lip products
+MAKEUP:
+- Foundation
+- Concealer
 - Mascara
+- Lip products
 - Makeup routines
+- Product recommendations
 
-4. Fragrances
+FRAGRANCES:
 - Perfumes
 - Fragrance recommendations
+- Fragrance preferences
 
-5. L'Oréal Products
+L'ORÉAL PRODUCTS:
 - Recommend relevant L'Oréal products.
-- Explain product benefits and ingredients.
-- Help users select products based on their needs.
-- Never invent product names, ingredients, or availability.
+- Explain product benefits.
+- Explain ingredients and their purposes.
+- Help customers choose products based on their needs.
 
-RESPONSE GUIDELINES:
+IMPORTANT GUIDELINES:
 
-- Be friendly, professional, and welcoming.
-- Keep responses clear and easy to understand.
-- Give practical recommendations.
-- Personalize advice based on the user's skin or hair type.
-- When recommending skincare, explain how to use products.
-- Include morning and evening routines when appropriate.
-- Recommend sunscreen as part of morning skincare.
-- Introduce active ingredients gradually.
-- Never promise to cure skin conditions.
-- Recommend a dermatologist for persistent or severe skin concerns.
+1. Always be friendly, professional, and welcoming.
 
-If a user asks an unrelated question, politely explain
-that you specialize in L'Oréal and beauty-related topics.
+2. Ask questions when necessary to understand the user's
+skin type, concerns, preferences, and budget.
 
-Always make the experience feel like a personal beauty consultation.
+3. Provide personalized recommendations rather than
+giving everyone the same routine.
+
+4. When recommending products, explain:
+   - What the product does.
+   - Why it may help.
+   - How to use it.
+   - When to use it.
+
+5. Provide morning and evening routines when requested.
+
+6. Recommend sunscreen as part of morning skincare.
+
+7. Introduce active skincare ingredients gradually.
+
+8. Never promise to cure skin conditions.
+
+9. Never invent L'Oréal product names, ingredients,
+prices, or availability. If uncertain, say so.
+
+10. Recommend consulting a dermatologist for persistent
+or severe skin concerns.
+
+11. If someone asks about unrelated topics, politely
+explain that you specialize in beauty and L'Oréal products.
+
+Keep answers conversational, helpful, and easy to understand.
 `;
 
-// ==========================================
-// CONVERSATION HISTORY
-// ==========================================
+
+// 4. CONVERSATION HISTORY
+// ============================================
 
 const conversation = [
   {
@@ -91,9 +119,9 @@ const conversation = [
   }
 ];
 
-// ==========================================
-// DISPLAY CHAT MESSAGES
-// ==========================================
+
+// 5. DISPLAY CHAT MESSAGES
+// ============================================
 
 function appendMessage(role, text, options = {}) {
 
@@ -102,6 +130,7 @@ function appendMessage(role, text, options = {}) {
   container.className =
     "msg " + (role === "user" ? "user" : "ai");
 
+  // Display user's original question above AI response
   if (role === "ai" && options.userEcho) {
 
     const echo = document.createElement("span");
@@ -112,6 +141,7 @@ function appendMessage(role, text, options = {}) {
     container.appendChild(echo);
   }
 
+  // Create message bubble
   const bubble = document.createElement("div");
 
   bubble.className = "bubble";
@@ -119,19 +149,22 @@ function appendMessage(role, text, options = {}) {
 
   container.appendChild(bubble);
 
+  // Add message to chat
   chatWindow.appendChild(container);
 
+  // Automatically scroll to latest message
   chatWindow.scrollTop = chatWindow.scrollHeight;
 
   return container;
 }
 
-// ==========================================
-// LIMIT CONVERSATION HISTORY
-// ==========================================
+
+// 6. LIMIT CONVERSATION HISTORY
+// ============================================
 
 function trimConversation(maxItems = 16) {
 
+  // Keep system prompt and recent conversation
   const recentMessages = conversation
     .slice(1)
     .slice(-maxItems);
@@ -142,9 +175,9 @@ function trimConversation(maxItems = 16) {
   ];
 }
 
-// ==========================================
-// EXTRACT AI RESPONSE
-// ==========================================
+
+// 7. EXTRACT AI RESPONSE
+// ============================================
 
 function extractReply(data) {
 
@@ -159,14 +192,21 @@ function extractReply(data) {
     data?.content ||
     data?.assistant;
 
+  // Handle alternative response formats
   if (Array.isArray(reply)) {
 
     reply = reply
       .map(item => {
-        if (typeof item === "string") return item;
+
+        if (typeof item === "string") {
+          return item;
+        }
+
         return item?.text || item?.content || "";
+
       })
       .join("\n");
+
   }
 
   return typeof reply === "string"
@@ -174,9 +214,9 @@ function extractReply(data) {
     : "";
 }
 
-// ==========================================
-// CONNECT TO CLOUDFLARE WORKER
-// ==========================================
+
+// 8. CONNECT TO CLOUDFLARE WORKER
+// ============================================
 
 async function fetchAssistantReply(messages) {
 
@@ -194,22 +234,24 @@ async function fetchAssistantReply(messages) {
 
   });
 
-  const rawResponse = await response.text();
+  // Read server response
+  const responseText = await response.text();
 
   let data;
 
   try {
 
-    data = JSON.parse(rawResponse);
+    data = JSON.parse(responseText);
 
   } catch {
 
     throw new Error(
-      "Invalid response from the server."
+      "The server returned an invalid response."
     );
 
   }
 
+  // Check for server errors
   if (!response.ok) {
 
     throw new Error(
@@ -220,6 +262,7 @@ async function fetchAssistantReply(messages) {
 
   }
 
+  // Extract AI response
   const reply = extractReply(data);
 
   if (!reply) {
@@ -233,14 +276,15 @@ async function fetchAssistantReply(messages) {
   return reply;
 }
 
-// ==========================================
-// CHAT SUBMISSION
-// ==========================================
+
+// 9. HANDLE CHAT SUBMISSION
+// ============================================
 
 chatForm.addEventListener("submit", async (event) => {
 
   event.preventDefault();
 
+  // Get user message
   const text = userInput.value.trim();
 
   if (!text) return;
@@ -251,7 +295,7 @@ chatForm.addEventListener("submit", async (event) => {
   // Clear input
   userInput.value = "";
 
-  // Save user message
+  // Save message to conversation
   conversation.push({
     role: "user",
     content: text
@@ -261,14 +305,16 @@ chatForm.addEventListener("submit", async (event) => {
   const placeholder = appendMessage(
     "ai",
     "Thinking...",
-    { userEcho: text }
+    {
+      userEcho: text
+    }
   );
 
   const bubble = placeholder.querySelector(".bubble");
 
+  // Disable input while waiting
   const sendButton = chatForm.querySelector("button");
 
-  // Disable input while processing
   userInput.disabled = true;
 
   if (sendButton) {
@@ -277,16 +323,16 @@ chatForm.addEventListener("submit", async (event) => {
 
   try {
 
-    // Prepare conversation
+    // Prepare conversation history
     const messages = trimConversation(16);
 
-    // Get AI response
+    // Request AI response
     const reply = await fetchAssistantReply(messages);
 
     // Display response
     bubble.textContent = reply;
 
-    // Save assistant response
+    // Save AI response
     conversation.push({
       role: "assistant",
       content: reply
@@ -294,36 +340,42 @@ chatForm.addEventListener("submit", async (event) => {
 
   } catch (error) {
 
+    // Log actual error for debugging
     console.error(
-      "L'Oréal Assistant Error:",
+      "L'Oréal Beauty Assistant Error:",
       error
     );
 
+    // Display friendly error
     bubble.textContent =
       "I'm sorry! I'm having trouble connecting right now. Please try again shortly.";
 
+    // Do not save temporary errors as AI responses
+
   } finally {
 
-    // Re-enable chat
+    // Re-enable input
     userInput.disabled = false;
 
     if (sendButton) {
       sendButton.disabled = false;
     }
 
+    // Return focus to input
     userInput.focus();
 
+    // Scroll to latest message
     chatWindow.scrollTop = chatWindow.scrollHeight;
 
   }
 
 });
 
-// ==========================================
-// INITIAL GREETING
-// ==========================================
+
+// 10. INITIAL GREETING
+// ============================================
 
 appendMessage(
   "ai",
-  "👋 Hello! Welcome to L'Oréal Beauty Assistant! I'm here to help you discover products, build skincare routines, explore ingredients, and find beauty solutions. What can I help you with today?"
+  "👋 Hello! Welcome to L'Oréal Beauty Assistant! I'm here to help you discover beauty products, build personalized skincare routines, explore ingredients, and find the right beauty solutions. What can I help you with today?"
 );
