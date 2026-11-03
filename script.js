@@ -1,168 +1,329 @@
+
 "use strict";
 
-// L'Oréal Chat — clean client script
-// - Conversation history is maintained and sent to your Cloudflare Worker
-// - Keeps a demo fallback so the UI stays testable during development
+// ==========================================
+// L'ORÉAL BEAUTY ASSISTANT
+// Frontend JavaScript
+// ==========================================
 
-// DOM elements
+// DOM Elements
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
 
-// System prompt (assistant personality)
-const systemPrompt =
-  "You are a helpful L'Oréal beauty assistant. You can answer questions about L'Oréal products, skincare routines, haircare, fragrances, and makeup. If asked about unrelated topics, politely decline.";
+// Cloudflare Worker API endpoint
+const API_ENDPOINT =
+  "https://loreal-chat-proxy.amukash.workers.dev";
 
-// API endpoint (your Cloudflare Worker)
-const API_ENDPOINT = "https://loreal-chat-proxy.amukash.workers.dev";
+// ==========================================
+// AI SYSTEM PROMPT
+// ==========================================
 
-// Conversation history (starts with system prompt)
-const conversation = [{ role: "system", content: systemPrompt }];
+const systemPrompt = `
+You are the official L'Oréal Beauty Assistant.
 
-// Append a message bubble to the chat window
-function appendMessage(role, text, opts = {}) {
+Your purpose is to help users discover beauty products
+and develop personalized beauty routines.
+
+YOUR AREAS OF EXPERTISE:
+
+1. Skincare
+- Oily skin
+- Dry skin
+- Combination skin
+- Sensitive skin
+- Acne-prone skin
+- Uneven skin tone
+- Dark spots
+- Hydration
+- Anti-aging
+
+2. Haircare
+- Hair types and textures
+- Hair treatments
+- Shampoos and conditioners
+- Hair growth and scalp care
+
+3. Makeup
+- Foundations
+- Concealers
+- Lip products
+- Mascara
+- Makeup routines
+
+4. Fragrances
+- Perfumes
+- Fragrance recommendations
+
+5. L'Oréal Products
+- Recommend relevant L'Oréal products.
+- Explain product benefits and ingredients.
+- Help users select products based on their needs.
+- Never invent product names, ingredients, or availability.
+
+RESPONSE GUIDELINES:
+
+- Be friendly, professional, and welcoming.
+- Keep responses clear and easy to understand.
+- Give practical recommendations.
+- Personalize advice based on the user's skin or hair type.
+- When recommending skincare, explain how to use products.
+- Include morning and evening routines when appropriate.
+- Recommend sunscreen as part of morning skincare.
+- Introduce active ingredients gradually.
+- Never promise to cure skin conditions.
+- Recommend a dermatologist for persistent or severe skin concerns.
+
+If a user asks an unrelated question, politely explain
+that you specialize in L'Oréal and beauty-related topics.
+
+Always make the experience feel like a personal beauty consultation.
+`;
+
+// ==========================================
+// CONVERSATION HISTORY
+// ==========================================
+
+const conversation = [
+  {
+    role: "system",
+    content: systemPrompt
+  }
+];
+
+// ==========================================
+// DISPLAY CHAT MESSAGES
+// ==========================================
+
+function appendMessage(role, text, options = {}) {
+
   const container = document.createElement("div");
-  container.className = "msg " + (role === "user" ? "user" : "ai");
 
-  if (role === "ai" && opts.userEcho) {
+  container.className =
+    "msg " + (role === "user" ? "user" : "ai");
+
+  if (role === "ai" && options.userEcho) {
+
     const echo = document.createElement("span");
+
     echo.className = "user-echo";
-    echo.textContent = opts.userEcho;
+    echo.textContent = options.userEcho;
+
     container.appendChild(echo);
   }
 
   const bubble = document.createElement("div");
+
   bubble.className = "bubble";
   bubble.textContent = text;
+
   container.appendChild(bubble);
 
   chatWindow.appendChild(container);
+
   chatWindow.scrollTop = chatWindow.scrollHeight;
+
   return container;
 }
 
-// Conservative client-side off-topic guard
-function simpleOffTopicCheck(text) {
-  const offTopic = [
-    "politics",
-    "president",
-    "election",
-    "stock",
-    "crypto",
-    "bitcoin",
-    "porn",
-    "torrent",
-    "torrenting",
+// ==========================================
+// LIMIT CONVERSATION HISTORY
+// ==========================================
+
+function trimConversation(maxItems = 16) {
+
+  const recentMessages = conversation
+    .slice(1)
+    .slice(-maxItems);
+
+  return [
+    conversation[0],
+    ...recentMessages
   ];
-  const lower = text.toLowerCase();
-  return offTopic.some((k) => lower.includes(k));
 }
 
-// Limit conversation length before sending to control token usage
-function trimConversation(maxItems = 12) {
-  // keep the system prompt plus the last (maxItems) user/assistant pairs
-  const kept = [conversation[0]]; // system prompt
-  const tail = conversation.slice(-maxItems);
-  return kept.concat(tail);
-}
+// ==========================================
+// EXTRACT AI RESPONSE
+// ==========================================
 
-// Send conversation to API and return assistant reply (or throw)
-async function fetchAssistantReply(messages) {
-  const res = await fetch(API_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
-  });
+function extractReply(data) {
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    const err = new Error(`Worker error ${res.status}: ${text}`);
-    err.status = res.status;
-    throw err;
+  if (typeof data === "string") {
+    return data.trim();
   }
 
-  const data = await res.json();
-  // Accept multiple response shapes:
-  // - OpenAI raw response: { choices: [ { message: { content } } ] }
-  // - Some workers / proxies may return { reply } or { content } or { assistant }
-  const reply =
-    data?.choices?.[0]?.message?.content ||
+  let reply =
     data?.reply ||
+    data?.choices?.[0]?.message?.content ||
+    data?.output_text ||
     data?.content ||
-    data?.assistant ||
-    (typeof data === "string" ? data : undefined);
+    data?.assistant;
+
+  if (Array.isArray(reply)) {
+
+    reply = reply
+      .map(item => {
+        if (typeof item === "string") return item;
+        return item?.text || item?.content || "";
+      })
+      .join("\n");
+  }
+
+  return typeof reply === "string"
+    ? reply.trim()
+    : "";
+}
+
+// ==========================================
+// CONNECT TO CLOUDFLARE WORKER
+// ==========================================
+
+async function fetchAssistantReply(messages) {
+
+  const response = await fetch(API_ENDPOINT, {
+
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json"
+    },
+
+    body: JSON.stringify({
+      messages: messages
+    })
+
+  });
+
+  const rawResponse = await response.text();
+
+  let data;
+
+  try {
+
+    data = JSON.parse(rawResponse);
+
+  } catch {
+
+    throw new Error(
+      "Invalid response from the server."
+    );
+
+  }
+
+  if (!response.ok) {
+
+    throw new Error(
+      data?.error ||
+      data?.message ||
+      `Server error: ${response.status}`
+    );
+
+  }
+
+  const reply = extractReply(data);
+
+  if (!reply) {
+
+    throw new Error(
+      "The AI returned an empty response."
+    );
+
+  }
 
   return reply;
 }
 
-// Submit handler
-chatForm.addEventListener("submit", async (ev) => {
-  ev.preventDefault();
+// ==========================================
+// CHAT SUBMISSION
+// ==========================================
+
+chatForm.addEventListener("submit", async (event) => {
+
+  event.preventDefault();
+
   const text = userInput.value.trim();
+
   if (!text) return;
 
-  // Display user's message
+  // Display user message
   appendMessage("user", text);
+
+  // Clear input
   userInput.value = "";
 
-  // Save to conversation
-  conversation.push({ role: "user", content: text });
+  // Save user message
+  conversation.push({
+    role: "user",
+    content: text
+  });
 
-  // Off-topic guard
-  if (simpleOffTopicCheck(text)) {
-    const refusal =
-      "I'm sorry, I can only answer questions related to L'Oréal and beauty.";
-    appendMessage("ai", refusal, { userEcho: text });
-    conversation.push({ role: "assistant", content: refusal });
-    userInput.focus();
-    return;
-  }
+  // Create loading message
+  const placeholder = appendMessage(
+    "ai",
+    "Thinking...",
+    { userEcho: text }
+  );
 
-  // Show placeholder
-  const placeholder = appendMessage("ai", "Thinking...", { userEcho: text });
+  const bubble = placeholder.querySelector(".bubble");
 
-  // Disable input while waiting
-  const sendBtn = chatForm.querySelector("button");
+  const sendButton = chatForm.querySelector("button");
+
+  // Disable input while processing
   userInput.disabled = true;
-  if (sendBtn) sendBtn.disabled = true;
+
+  if (sendButton) {
+    sendButton.disabled = true;
+  }
 
   try {
-    // Trim conversation to keep payload small
-    const messagesToSend = trimConversation(16);
-    const reply = await fetchAssistantReply(messagesToSend);
 
-    if (!reply) {
-      // show demo fallback when reply is empty
-      const demo =
-        "(Demo) I can't reach your API endpoint or it returned no reply. Confirm the worker is deployed and OPENAI_API_KEY is set.";
-      const bubble = placeholder.querySelector(".bubble");
-      if (bubble) bubble.textContent = demo;
-      else placeholder.textContent = demo;
-      conversation.push({ role: "assistant", content: demo });
-    } else {
-      const bubble = placeholder.querySelector(".bubble");
-      if (bubble) bubble.textContent = reply;
-      else placeholder.textContent = reply;
-      conversation.push({ role: "assistant", content: reply });
-    }
-  } catch (err) {
-    console.error("Chat request failed", err);
-    const fallback =
-      "(Demo) Unable to reach API. Update API_ENDPOINT to your deployed worker or server. Example answer: L'Oréal offers targeted serums to hydrate skin and improve texture.";
-    const bubble = placeholder.querySelector(".bubble");
-    if (bubble) bubble.textContent = fallback;
-    else placeholder.textContent = fallback;
-    conversation.push({ role: "assistant", content: fallback });
+    // Prepare conversation
+    const messages = trimConversation(16);
+
+    // Get AI response
+    const reply = await fetchAssistantReply(messages);
+
+    // Display response
+    bubble.textContent = reply;
+
+    // Save assistant response
+    conversation.push({
+      role: "assistant",
+      content: reply
+    });
+
+  } catch (error) {
+
+    console.error(
+      "L'Oréal Assistant Error:",
+      error
+    );
+
+    bubble.textContent =
+      "I'm sorry! I'm having trouble connecting right now. Please try again shortly.";
+
   } finally {
+
+    // Re-enable chat
     userInput.disabled = false;
-    if (sendBtn) sendBtn.disabled = false;
+
+    if (sendButton) {
+      sendButton.disabled = false;
+    }
+
     userInput.focus();
+
     chatWindow.scrollTop = chatWindow.scrollHeight;
+
   }
+
 });
 
-// Initial greeting
+// ==========================================
+// INITIAL GREETING
+// ==========================================
+
 appendMessage(
   "ai",
-  "👋 Hello! I'm the L'Oréal assistant. Ask me about products, routines, or ingredients."
+  "👋 Hello! Welcome to L'Oréal Beauty Assistant! I'm here to help you discover products, build skincare routines, explore ingredients, and find beauty solutions. What can I help you with today?"
 );
