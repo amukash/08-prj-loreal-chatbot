@@ -327,3 +327,184 @@ appendMessage(
   "ai",
   "👋 Hello! Welcome to L'Oréal Beauty Assistant! I'm here to help you discover products, build skincare routines, explore ingredients, and find beauty solutions. What can I help you with today?"
 );
+
+
+export default {
+
+  async fetch(request, env) {
+
+    // CORS configuration
+    const corsHeaders = {
+
+      "Access-Control-Allow-Origin": "*",
+
+      "Access-Control-Allow-Methods":
+        "POST, OPTIONS",
+
+      "Access-Control-Allow-Headers":
+        "Content-Type"
+
+    };
+
+    // Handle browser preflight
+    if (request.method === "OPTIONS") {
+
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      });
+
+    }
+
+    // Only allow POST requests
+    if (request.method !== "POST") {
+
+      return Response.json(
+        {
+          error: "Method not allowed"
+        },
+        {
+          status: 405,
+          headers: corsHeaders
+        }
+      );
+
+    }
+
+    try {
+
+      // Read incoming messages
+      const body = await request.json();
+
+      const messages = body.messages;
+
+      if (
+        !Array.isArray(messages) ||
+        messages.length === 0
+      ) {
+
+        return Response.json(
+          {
+            error: "Invalid messages provided."
+          },
+          {
+            status: 400,
+            headers: corsHeaders
+          }
+        );
+
+      }
+
+      // Check API key
+      if (!env.OPENAI_API_KEY) {
+
+        throw new Error(
+          "OPENAI_API_KEY is missing from Cloudflare."
+        );
+
+      }
+
+      // Connect to OpenAI
+      const openAIResponse = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+
+          method: "POST",
+
+          headers: {
+
+            "Content-Type": "application/json",
+
+            "Authorization":
+              `Bearer ${env.OPENAI_API_KEY}`
+
+          },
+
+          body: JSON.stringify({
+
+            model: "gpt-4o-mini",
+
+            messages: messages,
+
+            temperature: 0.7,
+
+            max_tokens: 700
+
+          })
+
+        }
+      );
+
+      // Read OpenAI response
+      const result = await openAIResponse.json();
+
+      // Check API errors
+      if (!openAIResponse.ok) {
+
+        console.error(
+          "OpenAI Error:",
+          result
+        );
+
+        return Response.json(
+          {
+            error:
+              result?.error?.message ||
+              "OpenAI API request failed."
+          },
+          {
+            status: openAIResponse.status,
+            headers: corsHeaders
+          }
+        );
+
+      }
+
+      // Extract assistant response
+      const reply =
+        result?.choices?.[0]?.message?.content;
+
+      if (!reply) {
+
+        throw new Error(
+          "No response received from OpenAI."
+        );
+
+      }
+
+      // Return response to frontend
+      return Response.json(
+        {
+          reply: reply
+        },
+        {
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Worker Error:",
+        error
+      );
+
+      return Response.json(
+        {
+          error:
+            error.message ||
+            "Internal server error."
+        },
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      );
+
+    }
+
+  }
+
+};
+
